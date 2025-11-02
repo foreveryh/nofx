@@ -819,6 +819,38 @@ func (t *AsterTrader) CloseShort(symbol string, quantity float64) (map[string]in
 	return result, nil
 }
 
+// SetMarginMode 设置仓位模式
+func (t *AsterTrader) SetMarginMode(symbol string, isCrossMargin bool) error {
+	// Aster支持仓位模式设置
+	// API格式与币安相似：CROSSED(全仓) / ISOLATED(逐仓)
+	marginType := "CROSSED"
+	if !isCrossMargin {
+		marginType = "ISOLATED"
+	}
+	
+	params := map[string]interface{}{
+		"symbol":     symbol,
+		"marginType": marginType,
+	}
+	
+	// 使用request方法调用API
+	_, err := t.request("POST", "/fapi/v3/marginType", params)
+	if err != nil {
+		// 如果错误表示无需更改，忽略错误
+		if strings.Contains(err.Error(), "No need to change") || 
+		   strings.Contains(err.Error(), "Margin type cannot be changed") {
+			log.Printf("  ✓ %s 仓位模式已是 %s 或有持仓无法更改", symbol, marginType)
+			return nil
+		}
+		log.Printf("  ⚠️ 设置仓位模式失败: %v", err)
+		// 不返回错误，让交易继续
+		return nil
+	}
+	
+	log.Printf("  ✓ %s 仓位模式已设置为 %s", symbol, marginType)
+	return nil
+}
+
 // SetLeverage 设置杠杆倍数
 func (t *AsterTrader) SetLeverage(symbol string, leverage int) error {
 	params := map[string]interface{}{
@@ -947,6 +979,61 @@ func (t *AsterTrader) CancelAllOrders(symbol string) error {
 
 	_, err := t.request("DELETE", "/fapi/v3/allOpenOrders", params)
 	return err
+}
+
+// CancelStopOrders 取消该币种的止盈/止损单（用于调整止盈止损位置）
+func (t *AsterTrader) CancelStopOrders(symbol string) error {
+	// 获取该币种的所有未完成订单
+	params := map[string]interface{}{
+		"symbol": symbol,
+	}
+
+	body, err := t.request("GET", "/fapi/v3/openOrders", params)
+	if err != nil {
+		return fmt.Errorf("获取未完成订单失败: %w", err)
+	}
+
+	var orders []map[string]interface{}
+	if err := json.Unmarshal(body, &orders); err != nil {
+		return fmt.Errorf("解析订单数据失败: %w", err)
+	}
+
+	// 过滤出止盈止损单并取消
+	canceledCount := 0
+	for _, order := range orders {
+		orderType, _ := order["type"].(string)
+
+		// 只取消止损和止盈订单
+		if orderType == "STOP_MARKET" ||
+			orderType == "TAKE_PROFIT_MARKET" ||
+			orderType == "STOP" ||
+			orderType == "TAKE_PROFIT" {
+
+			orderID, _ := order["orderId"].(float64)
+			cancelParams := map[string]interface{}{
+				"symbol":  symbol,
+				"orderId": int64(orderID),
+			}
+
+			_, err := t.request("DELETE", "/fapi/v3/order", cancelParams)
+			if err != nil {
+				log.Printf("  ⚠ 取消订单 %d 失败: %v", int64(orderID), err)
+				continue
+			}
+
+			canceledCount++
+			log.Printf("  ✓ 已取消 %s 的止盈/止损单 (订单ID: %d, 类型: %s)",
+				symbol, int64(orderID), orderType)
+		}
+	}
+
+	if canceledCount == 0 {
+		log.Printf("  ℹ %s 没有止盈/止损单需要取消", symbol)
+	} else {
+		log.Printf("  ✓ 已取消 %s 的 %d 个止盈/止损单", symbol, canceledCount)
+	}
+
+	return nil
 }
 
 // FormatQuantity 格式化数量（实现Trader接口）
