@@ -15,7 +15,10 @@ import type {
 import { CryptoService } from './crypto'
 import { httpClient } from './httpClient'
 
-const API_BASE = '/api'
+// Get API base URL from environment or use relative path
+const API_BASE = (typeof window !== 'undefined' && (window as any).NEXT_PUBLIC_API_URL)
+  ? (window as any).NEXT_PUBLIC_API_URL
+  : process.env.NEXT_PUBLIC_API_URL || '/api'
 
 // Helper function to get auth headers
 function getAuthHeaders(): Record<string, string> {
