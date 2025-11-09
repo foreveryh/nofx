@@ -22,7 +22,13 @@ export function useGitHubStats(owner: string, repo: string): GitHubStats {
   useEffect(() => {
     const fetchGitHubStats = async () => {
       try {
+<<<<<<< HEAD
         const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`)
+=======
+        const response = await fetch(
+          `https://api.github.com/repos/${owner}/${repo}`
+        )
+>>>>>>> upstream/dev
 
         if (!response.ok) {
           throw new Error('Failed to fetch GitHub stats')
@@ -46,7 +52,11 @@ export function useGitHubStats(owner: string, repo: string): GitHubStats {
         })
       } catch (error) {
         console.error('Error fetching GitHub stats:', error)
+<<<<<<< HEAD
         setStats(prev => ({
+=======
+        setStats((prev) => ({
+>>>>>>> upstream/dev
           ...prev,
           isLoading: false,
           error: error instanceof Error ? error.message : 'Unknown error',
