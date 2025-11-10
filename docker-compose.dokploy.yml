@@ -29,7 +29,7 @@ services:
         mkdir -p \"$$(dirname \"$$CONFIG_TARGET_PATH\")\"
         if [ ! -f \"$$CONFIG_TARGET_PATH\" ]; then
           echo '✅ Creating config.json file'
-          printf '%s\n' '{' '  \"admin_mode\": true,' '  \"registration_enabled\": false,' '  \"jwt_secret\": \"default_jwt_for_testing\",' '  \"database_path\": \"config.db\",' '  \"server_port\": 8080,' '  \"log_level\": \"info\"' '}' > \"$$CONFIG_TARGET_PATH\"
+          printf '%s\n' '{' '  "admin_mode": true,' '  "registration_enabled": false,' '  "jwt_secret": "default_jwt_for_testing",' '  "database_path": "config.db",' '  "server_port": 8080,' '  "log_level": "info"' '}' > \"$$CONFIG_TARGET_PATH\"
         fi
 
         BETA_MOUNT_PATH='beta_codes.txt'
