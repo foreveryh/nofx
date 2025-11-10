@@ -41,16 +41,23 @@ type ConfigFile struct {
 
 func resolveConfigFilePath() string {
 	if custom := strings.TrimSpace(os.Getenv("CONFIG_JSON_PATH")); custom != "" {
-		return custom
+		return resolveFallbackPath(custom)
 	}
 	return resolveFallbackPath("config.json")
 }
 
 func resolveBetaCodesPath() string {
 	if custom := strings.TrimSpace(os.Getenv("BETA_CODES_PATH")); custom != "" {
-		return custom
+		return resolveFallbackPath(custom)
 	}
 	return resolveFallbackPath("beta_codes.txt")
+}
+
+func resolveDatabasePath(base string) string {
+	if custom := strings.TrimSpace(strings.TrimSpace(os.Getenv("CONFIG_DB_PATH"))); custom != "" {
+		return resolveFallbackPath(custom)
+	}
+	return resolveFallbackPath(base)
 }
 
 func resolveFallbackPath(base string) string {
@@ -58,20 +65,14 @@ func resolveFallbackPath(base string) string {
 	info, err := os.Stat(normalized)
 	if err == nil {
 		if info.IsDir() {
-			candidate := filepath.Join(normalized, filepath.Base(normalized))
-			if fi, err := os.Stat(candidate); err == nil && !fi.IsDir() {
-				return candidate
-			}
-		} else {
-			return normalized
+			// If the mount point is a directory, store/read the file inside it.
+			return filepath.Join(normalized, filepath.Base(normalized))
 		}
+		return normalized
 	}
 
-	candidate := filepath.Join(normalized, filepath.Base(normalized))
-	if fi, err := os.Stat(candidate); err == nil && !fi.IsDir() {
-		return candidate
-	}
-
+	// When the path does not exist yet, return the normalized path so callers
+	// can create the file there (SQLite will create files on demand).
 	return normalized
 }
 
@@ -200,9 +201,15 @@ func main() {
 	_ = godotenv.Load()
 
 	// 初始化数据库配置
-	dbPath := "config.db"
+	dbPath := resolveDatabasePath("config.db")
 	if len(os.Args) > 1 {
-		dbPath = os.Args[1]
+		dbPath = resolveDatabasePath(os.Args[1])
+	}
+
+	if dir := filepath.Dir(dbPath); dir != "" && dir != "." {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			log.Fatalf("❌ 无法创建数据库目录 %s: %v", dir, err)
+		}
 	}
 
 	// 读取配置文件
