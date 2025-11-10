@@ -117,6 +117,8 @@ services:
       - HEALTH_CHECK_TIMEOUT=${HEALTH_CHECK_TIMEOUT:-10}
       - API_TIMEOUT=${API_TIMEOUT:-30s}
       - WEBSOCKET_TIMEOUT=${WEBSOCKET_TIMEOUT:-60s}
+      - CONFIG_JSON_PATH=/app/config.json/config.json
+      - BETA_CODES_PATH=/app/beta_codes.txt/beta_codes.txt
     networks:
       - nofx-network
     healthcheck:
