@@ -15,50 +15,53 @@ services:
       - ./secrets:/data/secrets
       - ./decision_logs:/data/decision_logs
     working_dir: /data
-    command: |
-      sh -c "
+    command:
+      - /bin/sh
+      - -c
+      - |
         set -e
-        echo '🔄 Initializing required files...'
+        echo 'Initializing required files...'
 
         CONFIG_MOUNT_PATH='config.json'
-        CONFIG_TARGET_PATH=\"$$CONFIG_MOUNT_PATH\"
-        if [ -d \"$$CONFIG_MOUNT_PATH\" ]; then
-          echo 'ℹ️ config.json 挂载为目录，使用内部文件 config.json/config.json'
-          CONFIG_TARGET_PATH=\"$$CONFIG_MOUNT_PATH/config.json\"
+        CONFIG_TARGET_PATH="$$CONFIG_MOUNT_PATH"
+        CONFIG_FORCE_GENERATE=false
+        if [ -d "$$CONFIG_MOUNT_PATH" ]; then
+          echo 'config.json mount is a directory, writing config.json/config.json'
+          CONFIG_TARGET_PATH="$$CONFIG_MOUNT_PATH/config.json"
+          CONFIG_FORCE_GENERATE=true
         fi
-        mkdir -p \"$$(dirname \"$$CONFIG_TARGET_PATH\")\"
-        if [ ! -f \"$$CONFIG_TARGET_PATH\" ]; then
-          echo '✅ Creating config.json file'
-          printf '%s\n' '{' '  "admin_mode": true,' '  "registration_enabled": false,' '  "jwt_secret": "default_jwt_for_testing",' '  "database_path": "config.db",' '  "server_port": 8080,' '  "log_level": "info"' '}' > \"$$CONFIG_TARGET_PATH\"
+        mkdir -p "$(dirname "$$CONFIG_TARGET_PATH")"
+        if [ "$$CONFIG_FORCE_GENERATE" = "true" ] || [ ! -f "$$CONFIG_TARGET_PATH" ]; then
+          echo 'Creating config.json file'
+          printf '%s\n' '{' '  "admin_mode": true,' '  "registration_enabled": false,' '  "jwt_secret": "default_jwt_for_testing",' '  "database_path": "config.db",' '  "server_port": 8080,' '  "log_level": "info"' '}' > "$$CONFIG_TARGET_PATH"
         fi
 
         BETA_MOUNT_PATH='beta_codes.txt'
-        BETA_TARGET_PATH=\"$$BETA_MOUNT_PATH\"
-        if [ -d \"$$BETA_MOUNT_PATH\" ]; then
-          echo 'ℹ️ beta_codes.txt 挂载为目录，使用内部文件 beta_codes.txt/beta_codes.txt'
-          BETA_TARGET_PATH=\"$$BETA_MOUNT_PATH/beta_codes.txt\"
+        BETA_TARGET_PATH="$$BETA_MOUNT_PATH"
+        BETA_FORCE_GENERATE=false
+        if [ -d "$$BETA_MOUNT_PATH" ]; then
+          echo 'beta_codes.txt mount is a directory, writing beta_codes.txt/beta_codes.txt'
+          BETA_TARGET_PATH="$$BETA_MOUNT_PATH/beta_codes.txt"
+          BETA_FORCE_GENERATE=true
         fi
-        mkdir -p \"$$(dirname \"$$BETA_TARGET_PATH\")\"
-        if [ ! -f \"$$BETA_TARGET_PATH\" ]; then
-          echo '✅ Creating beta_codes.txt'
-          touch \"$$BETA_TARGET_PATH\"
+        mkdir -p "$(dirname "$$BETA_TARGET_PATH")"
+        if [ "$$BETA_FORCE_GENERATE" = "true" ] || [ ! -f "$$BETA_TARGET_PATH" ]; then
+          echo 'Creating beta_codes.txt'
+          touch "$$BETA_TARGET_PATH"
         fi
 
-        # Ensure secrets directory
         if [ ! -d secrets ]; then
-          echo '✅ Creating secrets directory'
+          echo 'Creating secrets directory'
           mkdir -p secrets
           chmod 700 secrets
         fi
 
-        # Ensure decision_logs directory
         if [ ! -d decision_logs ]; then
-          echo '✅ Creating decision_logs directory'
+          echo 'Creating decision_logs directory'
           mkdir -p decision_logs
         fi
 
-        echo '✅ Initialization complete'
-      "
+        echo 'Initialization complete'
     networks:
       - nofx-network
     restart: "no"
