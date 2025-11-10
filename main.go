@@ -13,6 +13,7 @@ import (
 	"nofx/pool"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -38,24 +39,62 @@ type ConfigFile struct {
 	Log                *config.LogConfig     `json:"log"` // 日志配置
 }
 
+func resolveConfigFilePath() string {
+	if custom := strings.TrimSpace(os.Getenv("CONFIG_JSON_PATH")); custom != "" {
+		return custom
+	}
+	return resolveFallbackPath("config.json")
+}
+
+func resolveBetaCodesPath() string {
+	if custom := strings.TrimSpace(os.Getenv("BETA_CODES_PATH")); custom != "" {
+		return custom
+	}
+	return resolveFallbackPath("beta_codes.txt")
+}
+
+func resolveFallbackPath(base string) string {
+	normalized := filepath.Clean(base)
+	info, err := os.Stat(normalized)
+	if err == nil {
+		if info.IsDir() {
+			candidate := filepath.Join(normalized, filepath.Base(normalized))
+			if fi, err := os.Stat(candidate); err == nil && !fi.IsDir() {
+				return candidate
+			}
+		} else {
+			return normalized
+		}
+	}
+
+	candidate := filepath.Join(normalized, filepath.Base(normalized))
+	if fi, err := os.Stat(candidate); err == nil && !fi.IsDir() {
+		return candidate
+	}
+
+	return normalized
+}
+
 // loadConfigFile 读取并解析config.json文件
 func loadConfigFile() (*ConfigFile, error) {
+	configPath := resolveConfigFilePath()
+
 	// 检查config.json是否存在
-	if _, err := os.Stat("config.json"); os.IsNotExist(err) {
-		log.Printf("📄 config.json不存在，使用默认配置")
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		log.Printf("📄 %s 不存在，使用默认配置", configPath)
 		return &ConfigFile{}, nil
 	}
 
 	// 读取config.json
-	data, err := os.ReadFile("config.json")
+	data, err := os.ReadFile(configPath)
 	if err != nil {
-		return nil, fmt.Errorf("读取config.json失败: %w", err)
+		return nil, fmt.Errorf("读取config.json失败 (%s): %w", configPath, err)
 	}
 
 	// 解析JSON
 	var configFile ConfigFile
 	if err := json.Unmarshal(data, &configFile); err != nil {
-		return nil, fmt.Errorf("解析config.json失败: %w", err)
+		return nil, fmt.Errorf("解析config.json失败 (%s): %w", configPath, err)
 	}
 
 	return &configFile, nil
@@ -117,7 +156,7 @@ func syncConfigToDatabase(database *config.Database, configFile *ConfigFile) err
 
 // loadBetaCodesToDatabase 加载内测码文件到数据库
 func loadBetaCodesToDatabase(database *config.Database) error {
-	betaCodeFile := "beta_codes.txt"
+	betaCodeFile := resolveBetaCodesPath()
 
 	// 检查内测码文件是否存在
 	if _, err := os.Stat(betaCodeFile); os.IsNotExist(err) {

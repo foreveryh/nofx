@@ -17,34 +17,40 @@ services:
     working_dir: /data
     command: |
       sh -c "
+        set -e
         echo '🔄 Initializing required files...'
 
-        # Fix config.json directory issue
-        if [ -d config.json ]; then
-          echo '❌ Removing config.json directory (Docker bug)'
-          rm -rf config.json
+        CONFIG_MOUNT_PATH='config.json'
+        CONFIG_TARGET_PATH=\"$$CONFIG_MOUNT_PATH\"
+        if [ -d \"$$CONFIG_MOUNT_PATH\" ]; then
+          echo 'ℹ️ config.json 挂载为目录，使用内部文件 config.json/config.json'
+          CONFIG_TARGET_PATH=\"$$CONFIG_MOUNT_PATH/config.json\"
         fi
-        if [ ! -f config.json ]; then
+        mkdir -p \"$$(dirname \"$$CONFIG_TARGET_PATH\")\"
+        if [ ! -f \"$$CONFIG_TARGET_PATH\" ]; then
           echo '✅ Creating config.json file'
           printf '%s\n' \
             '{' \
-            '  "admin_mode": true,' \
-            '  "registration_enabled": false,' \
-            '  "jwt_secret": "default_jwt_for_testing",' \
-            '  "database_path": "config.db",' \
-            '  "server_port": 8080,' \
-            '  "log_level": "info"' \
+            '  \"admin_mode\": true,' \
+            '  \"registration_enabled\": false,' \
+            '  \"jwt_secret\": \"default_jwt_for_testing\",' \
+            '  \"database_path\": \"config.db\",' \
+            '  \"server_port\": 8080,' \
+            '  \"log_level\": \"info\"' \
             '}' \
-            > config.json
+            > \"$$CONFIG_TARGET_PATH\"
         fi
 
-        # Fix beta_codes.txt
-        if [ -d beta_codes.txt ]; then
-          rm -rf beta_codes.txt
+        BETA_MOUNT_PATH='beta_codes.txt'
+        BETA_TARGET_PATH=\"$$BETA_MOUNT_PATH\"
+        if [ -d \"$$BETA_MOUNT_PATH\" ]; then
+          echo 'ℹ️ beta_codes.txt 挂载为目录，使用内部文件 beta_codes.txt/beta_codes.txt'
+          BETA_TARGET_PATH=\"$$BETA_MOUNT_PATH/beta_codes.txt\"
         fi
-        if [ ! -f beta_codes.txt ]; then
+        mkdir -p \"$$(dirname \"$$BETA_TARGET_PATH\")\"
+        if [ ! -f \"$$BETA_TARGET_PATH\" ]; then
           echo '✅ Creating beta_codes.txt'
-          touch beta_codes.txt
+          touch \"$$BETA_TARGET_PATH\"
         fi
 
         # Ensure secrets directory
