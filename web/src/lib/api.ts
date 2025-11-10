@@ -15,10 +15,12 @@ import type {
 import { CryptoService } from './crypto'
 import { httpClient } from './httpClient'
 
-// Get API base URL from environment or use relative path
-const API_BASE = (typeof window !== 'undefined' && (window as any).NEXT_PUBLIC_API_URL)
-  ? (window as any).NEXT_PUBLIC_API_URL
-  : process.env.NEXT_PUBLIC_API_URL || '/api'
+// Get API base URL (prefer browser runtime, then Vite env, then default)
+const API_BASE =
+  (typeof window !== 'undefined' && (window as any).NEXT_PUBLIC_API_URL) ||
+  import.meta.env?.VITE_API_URL ||
+  import.meta.env?.NEXT_PUBLIC_API_URL ||
+  '/api'
 
 // Helper function to get auth headers
 function getAuthHeaders(): Record<string, string> {
