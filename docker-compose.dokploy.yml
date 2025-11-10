@@ -26,16 +26,16 @@ services:
         fi
         if [ ! -f config.json ]; then
           echo '✅ Creating config.json file'
-          cat > config.json << 'EOF'
-{
-  \"admin_mode\": true,
-  \"registration_enabled\": false,
-  \"jwt_secret\": \"default_jwt_for_testing\",
-  \"database_path\": \"config.db\",
-  \"server_port\": 8080,
-  \"log_level\": \"info\"
-}
-EOF
+          printf '%s\n' \
+            '{' \
+            '  "admin_mode": true,' \
+            '  "registration_enabled": false,' \
+            '  "jwt_secret": "default_jwt_for_testing",' \
+            '  "database_path": "config.db",' \
+            '  "server_port": 8080,' \
+            '  "log_level": "info"' \
+            '}' \
+            > config.json
         fi
 
         # Fix beta_codes.txt
@@ -122,20 +122,12 @@ EOF
       - WEBSOCKET_TIMEOUT=${WEBSOCKET_TIMEOUT:-60s}
     networks:
       - nofx-network
-      - dokploy-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
-    labels:
-      # Traefik 配置 - Dokploy 会自动生成
-      - "traefik.enable=true"
-      - "traefik.http.routers.nofx.rule=Host(\`${BACKEND_DOMAIN:-backend.yourdomain.com}\`)"
-      - "traefik.http.routers.nofx.entrypoints=websecure"
-      - "traefik.http.routers.nofx.tls.certresolver=letsencrypt"
-      - "traefik.http.services.nofx.loadbalancer.server.port=8080"
 
   # ============================================================
   # Frontend 服务：静态文件（无 Nginx proxy）
@@ -158,26 +150,19 @@ EOF
       - NEXT_PUBLIC_DOMAIN=${NEXT_PUBLIC_DOMAIN:-localhost}
     networks:
       - nofx-network
-      - dokploy-network
     depends_on:
       - nofx
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 5s
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.nofx-frontend.rule=Host(\`${FRONTEND_DOMAIN:-app.yourdomain.com}\`)"
-      - "traefik.http.routers.nofx-frontend.entrypoints=websecure"
-      - "traefik.http.routers.nofx-frontend.tls.certresolver=letsencrypt"
 
 networks:
   nofx-network:
     driver: bridge
-  dokploy-network:
-    external: true  # 连接到 Dokploy 网络
+
 
 volumes:
   # Redis 缓存（可选，用于会话共享）
